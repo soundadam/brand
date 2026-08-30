@@ -7,6 +7,7 @@ ICONS; only soundadam has a traced wordmark today, so other family
 members currently render as icon-only marks (see FAMILY below).
 """
 
+import math
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -57,20 +58,51 @@ def icon_cells(rx: int = 10) -> str:
     return "\n        ".join(cells)
 
 
-# Original Aug 21 lockup: a centred peak with matching side humps.
-# Do not off-centre the transient — that reads as a broken sine, not a mark.
-WAVEFORM_PATH = (
-    "M2 142 C20 141 29 126 44 124 "
-    "C59 122 66 141 78 142 C92 143 93 82 111 69 "
-    "C129 56 134 140 150 140 C164 140 170 124 184 124 "
-    "C198 124 205 141 222 143"
-)
+def catmull_rom_path(points: list[tuple[float, float]]) -> str:
+    """Smooth cubic-bezier path through points (uniform Catmull-Rom)."""
+    n = len(points)
+    d = [f"M{points[0][0]:.2f} {points[0][1]:.2f}"]
+    for i in range(n - 1):
+        p0 = points[i - 1] if i - 1 >= 0 else points[i]
+        p1 = points[i]
+        p2 = points[i + 1]
+        p3 = points[i + 2] if i + 2 < n else points[i + 1]
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        d.append(
+            f"C{c1[0]:.2f} {c1[1]:.2f} {c2[0]:.2f} {c2[1]:.2f} {p2[0]:.2f} {p2[1]:.2f}"
+        )
+    return " ".join(d)
+
+
+def waveform_points() -> list[tuple[float, float]]:
+    """Bipolar oscilloscope trace: 2.5 cycles, equal peaks, full grid height.
+
+    A unipolar bump with decaying side lobes reads as single-slit diffraction.
+    Three equal-amplitude swings about the mid line read as audio; 2.5
+    cycles puts a full-height peak in the centre column.
+    """
+    x0, x1 = 8.0, 216.0
+    y_mid = 112.0
+    amp = 104.0
+    cycles = 2.5
+    samples = 40
+    pts = []
+    for i in range(samples + 1):
+        t = i / samples
+        x = x0 + (x1 - x0) * t
+        y = y_mid - amp * math.sin(2 * math.pi * cycles * t)
+        pts.append((x, y))
+    return pts
+
+
+WAVEFORM_STROKE = 7
 
 
 def waveform_overlay(cutout: str) -> str:
     return (
-        f'<path d="{WAVEFORM_PATH}" fill="none" stroke="{cutout}" '
-        'stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>'
+        f'<path d="{catmull_rom_path(waveform_points())}" fill="none" stroke="{cutout}" '
+        f'stroke-width="{WAVEFORM_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>'
     )
 
 

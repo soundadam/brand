@@ -88,8 +88,9 @@ lockup.
 
 `dist/*.svg` are the checked-in deliverable. `src/build_vector_logos.py`
 recomposes them from `src/wordmark-trace.svg` (letterforms) plus the
-nine-cell geometry. The waveform glyph is the original centred cubic
-(`WAVEFORM_PATH`), not an off-centre spike.
+nine-cell geometry. The waveform glyph is a bipolar 2.5-cycle oscilloscope trace
+(`waveform_points`) — full grid height, equal peaks, not a sinc
+envelope.
 
 ```sh
 python3 src/build_vector_logos.py
