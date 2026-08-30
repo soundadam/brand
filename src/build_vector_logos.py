@@ -206,6 +206,28 @@ def mark_svg(kind: str = "waveform", overlay: str | None = None) -> str:
 '''
 
 
+def compact_mark_svg() -> str:
+    """Filled Mexican-hat as the glyph itself — no nine-cell grid.
+
+    At favicon size the 8px gutters collapse to subpixels and the grid
+    reads as noise. The hat silhouette is the identity that still holds.
+    """
+    pts = waveform_points(brim_boost=True)
+    curve = polyline_path(pts)
+    y0 = WAVEFORM_Y_ZERO
+    path = (
+        f"{curve} L{pts[-1][0]:.2f} {y0:.2f} "
+        f"L{pts[0][0]:.2f} {y0:.2f} Z"
+    )
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+  <defs>
+    {gradient_def()}
+  </defs>
+  <path d="{path}" fill="url(#soundadam-blue)"/>
+</svg>
+'''
+
+
 def svg_document(kind: str, theme: str, wordmark: str, transparent: bool = False) -> str:
     if theme == "light":
         background = "#ffffff"
@@ -275,6 +297,7 @@ def main() -> None:
     mark = mark_svg("waveform")
     (DIST / "mark.svg").write_text(mark, encoding="utf-8")
     (DIST / "waveform" / "mark.svg").write_text(mark, encoding="utf-8")
+    (DIST / "mark-compact.svg").write_text(compact_mark_svg(), encoding="utf-8")
     (DIST / "waveform-stroke" / "mark.svg").write_text(
         mark_svg("waveform-stroke"), encoding="utf-8"
     )

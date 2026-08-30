@@ -13,7 +13,8 @@ not live only in scratch.
 | --- | --- |
 | Light UI, transparent canvas | [`dist/waveform/transparent-on-light.svg`](dist/waveform/transparent-on-light.svg) |
 | Dark UI, transparent canvas | [`dist/waveform/transparent-on-dark.svg`](dist/waveform/transparent-on-dark.svg) |
-| App icon / favicon (vector) | [`dist/mark.svg`](dist/mark.svg) |
+| Favicon / tab icon (vector) | [`dist/mark-compact.svg`](dist/mark-compact.svg) — blue hat, no grid |
+| Large mark / lockup companion | [`dist/mark.svg`](dist/mark.svg) — nine-cell grid |
 | Favicon (ICO) | [`dist/favicon.ico`](dist/favicon.ico) |
 | Touch / PWA raster | [`dist/apple-touch-icon.png`](dist/apple-touch-icon.png) (180), [`dist/icon-192.png`](dist/icon-192.png) |
 
@@ -43,9 +44,12 @@ product mark:
 3. Run the build script — it writes `dist/your-slug/mark.svg`.
 
 That only gets you the icon-only mark (grid + glyph, no text) — enough for
-an avatar, favicon, or app icon. A full text lockup like soundadam's needs
-its own traced wordmark (see "Rebuild SVG" below), since the wordmark is
-hand-traced art, not live type; there's no font file behind it to retype.
+a large avatar or the lockup companion. Tab-sized favicons use
+`mark-compact.svg` instead: the 8px gutters collapse at 16–32px and the
+grid reads as noise, so those files are the filled hat with no cells. A
+full text lockup like soundadam's needs its own traced wordmark (see
+"Rebuild SVG" below), since the wordmark is hand-traced art, not live
+type; there's no font file behind it to retype.
 
 | Product | Mark |
 | --- | --- |
@@ -59,7 +63,9 @@ hand-traced art, not live type; there's no font file behind it to retype.
 | --- | --- |
 | [soundadam.com](https://github.com/soundadam/soundadam.com) header and footer | `wp-content/themes/soundadam/assets/logo/soundadam-waveform.svg` ← `transparent-on-light.svg` |
 | soundadam.com mark | `wp-content/themes/soundadam/assets/logo/soundadam-mark.svg` ← `dist/mark.svg` |
-| [docs](https://github.com/soundadam/docs) (`llm.soundadam.com`) | `llm/logo/soundadam-waveform.svg` / `soundadam-waveform-dark.svg` / `soundadam-mark.svg` |
+| soundadam.com favicon | `assets/logo/soundadam-mark-compact.svg` ← `dist/mark-compact.svg`; `assets/favicon.ico` / `icon-192.png` / `apple-touch-icon.png` from compact |
+| [docs](https://github.com/soundadam/docs) (`docs.llm.soundadam.com`) | `llm/logo/soundadam-waveform.svg` / `soundadam-waveform-dark.svg` / `soundadam-mark.svg`; favicon `soundadam-mark-compact.svg` |
+| cluster product hosts | [platform-gitops](https://github.com/soundadam/platform-gitops) `clusters/production/networking/brand-favicon/` ← compact ICO / PNG / SVG |
 
 Copy again when the mark changes. Do not submodule this repo into WordPress
 or Mintlify unless a product actually needs the whole tree.
@@ -89,9 +95,11 @@ for kind in waveform waveform-stroke equalizer; do
     rsvg-convert -w 1324 -h 280 "dist/$kind/$variant.svg" -o "dist/$kind/$variant.png"
   done
 done
-rsvg-convert -w 180 -h 180 dist/mark.svg -o dist/apple-touch-icon.png
-rsvg-convert -w 192 -h 192 dist/mark.svg -o dist/icon-192.png
-rsvg-convert -w 32 -h 32 dist/mark.svg -o /tmp/mark-32.png
-rsvg-convert -w 48 -h 48 dist/mark.svg -o /tmp/mark-48.png
+rsvg-convert -w 32 -h 32 dist/mark-compact.svg -o /tmp/mark-32.png
+rsvg-convert -w 48 -h 48 dist/mark-compact.svg -o /tmp/mark-48.png
 magick /tmp/mark-32.png /tmp/mark-48.png dist/favicon.ico
+rsvg-convert -w 180 -h 180 dist/mark-compact.svg -o /tmp/mark-180.png
+rsvg-convert -w 192 -h 192 dist/mark-compact.svg -o /tmp/mark-192.png
+magick -size 180x180 xc:'#000000' /tmp/mark-180.png -composite dist/apple-touch-icon.png
+magick -size 192x192 xc:'#000000' /tmp/mark-192.png -composite dist/icon-192.png
 ```
