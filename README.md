@@ -3,8 +3,9 @@
 Source of truth for the soundadam lockup. Products copy files from `dist/`;
 they do not generate marks.
 
-The live wordmark is the **waveform** lockup. The equalizer set is an unused
-alternate kept here so it does not live only in scratch.
+The live wordmark is the **filled** Mexican-hat waveform lockup. Stroke
+waveform and equalizer sets are unused alternates kept here so they do
+not live only in scratch.
 
 ## Use this
 
@@ -28,9 +29,9 @@ light: `#050505`. Wordmark on dark: `#f7f9fb`. Canvas: 1324×280 (wordmark),
 
 Every `sound-*` product (soundadam, soundapi, ...) shares one chassis: the
 nine-cell grid + blue gradient. What changes per product is the glyph cut
-into the grid — `soundadam` gets the acoustic waveform, `soundapi` gets a
-signal relay (arrow – node – arrow), and so on. Same silhouette at a
-glance, distinct icon up close.
+into the grid — `soundadam` gets the filled Mexican-hat waveform,
+`soundapi` gets a signal relay (arrow – node – arrow), and so on. Same
+silhouette at a glance, distinct icon up close.
 
 `src/build_vector_logos.py` keeps this as an `ICONS` registry (name → glyph
 function) plus a `FAMILY_ICON_ONLY` map of `slug -> icon kind`. To add a new
@@ -48,7 +49,8 @@ hand-traced art, not live type; there's no font file behind it to retype.
 
 | Product | Mark |
 | --- | --- |
-| soundadam | [`dist/mark.svg`](dist/mark.svg) — waveform |
+| soundadam | [`dist/mark.svg`](dist/mark.svg) — filled Mexican-hat waveform |
+| soundadam (stroke, unused) | [`dist/waveform-stroke/`](dist/waveform-stroke/) |
 | soundapi | [`dist/soundapi/mark.svg`](dist/soundapi/mark.svg) — signal relay |
 
 ## Already copied
@@ -69,9 +71,10 @@ lockup.
 
 `dist/*.svg` are the checked-in deliverable. `src/build_vector_logos.py`
 recomposes them from `src/wordmark-trace.svg` (letterforms) plus the
-nine-cell geometry. The waveform glyph is a unipolar pulse with two side ripples
-(`waveform_points`) — a readable cut on the nine-cell, not a
-bipolar hairline.
+nine-cell geometry. The waveform glyph is a Mexican-hat / Ricker wavelet sampled onto
+the nine-cell (`waveform_points`), filled against the zero line.
+Negative lobes are stretched so the brim cuts the bottom row; numpy is
+optional at build time. The stroke cut lives in `dist/waveform-stroke/`.
 
 ```sh
 python3 src/build_vector_logos.py
@@ -81,12 +84,14 @@ PNG rasters are not rebuilt by that script. After a geometry change
 (needs `rsvg-convert` and `magick`):
 
 ```sh
-for kind in waveform equalizer; do
+for kind in waveform waveform-stroke equalizer; do
   for variant in on-light on-dark transparent-on-light transparent-on-dark; do
     rsvg-convert -w 1324 -h 280 "dist/$kind/$variant.svg" -o "dist/$kind/$variant.png"
   done
 done
 rsvg-convert -w 180 -h 180 dist/mark.svg -o dist/apple-touch-icon.png
 rsvg-convert -w 192 -h 192 dist/mark.svg -o dist/icon-192.png
-magick dist/mark.svg -background none -define icon:auto-resize=32,48 dist/favicon.ico
+rsvg-convert -w 32 -h 32 dist/mark.svg -o /tmp/mark-32.png
+rsvg-convert -w 48 -h 48 dist/mark.svg -o /tmp/mark-48.png
+magick /tmp/mark-32.png /tmp/mark-48.png dist/favicon.ico
 ```

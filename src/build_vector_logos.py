@@ -58,58 +58,93 @@ def icon_cells(rx: int = 10) -> str:
     return "\n        ".join(cells)
 
 
-def catmull_rom_path(points: list[tuple[float, float]]) -> str:
-    """Smooth cubic-bezier path through points (uniform Catmull-Rom)."""
-    n = len(points)
-    d = [f"M{points[0][0]:.2f} {points[0][1]:.2f}"]
-    for i in range(n - 1):
-        p0 = points[i - 1] if i - 1 >= 0 else points[i]
-        p1 = points[i]
-        p2 = points[i + 1]
-        p3 = points[i + 2] if i + 2 < n else points[i + 1]
-        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
-        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
-        d.append(
-            f"C{c1[0]:.2f} {c1[1]:.2f} {c2[0]:.2f} {c2[1]:.2f} {p2[0]:.2f} {p2[1]:.2f}"
-        )
-    return " ".join(d)
+def polyline_path(points: list[tuple[float, float]]) -> str:
+    """Dense sample polyline — faithful to the numpy Ricker, no spline fattening."""
+    parts = [f"M{points[0][0]:.2f} {points[0][1]:.2f}"]
+    parts.extend(f"L{x:.2f} {y:.2f}" for x, y in points[1:])
+    return " ".join(parts)
 
 
-def waveform_points() -> list[tuple[float, float]]:
-    """Unipolar pulse with side ripples, sitting on a baseline.
+def ricker(t: float) -> float:
+    """Mexican-hat / Ricker wavelet: (1 - t²) exp(-t² / 2). Peak 1 at t=0.
 
-    A bipolar hairline disappears into the nine-cell gutters. A single
-    raised bump with two smaller ripples still reads at favicon size;
-    the centre lobe reaches the top row so the cut fills the grid height.
+    Zeros at t=±1, negative lobes at t=±√3 (value ≈ −0.446), returns to
+    ~0 by |t|≈4. Same formula as numpy; scipy.signal.ricker is this
+    shape at a discrete width.
     """
-    x0, x1 = 8.0, 216.0
-    y_base = 168.0
-    y_peak = 16.0
-    samples = 40
+    return (1.0 - t * t) * math.exp(-0.5 * t * t)
+
+
+# t ∈ [−4, 4]: edges ≈ 0 (flat brim). Previous [−2.4, 2.4] cut the
+# return-to-zero and stretched the peak across the side columns.
+RICKER_T_MAX = 4.0
+RICKER_SAMPLES = 241
+WAVEFORM_X0, WAVEFORM_X1 = 8.0, 216.0
+WAVEFORM_Y_ZERO = 112.0
+# Peak into the top row. True-ratio troughs only reach ~y=157 (gutter),
+# so the grid overlay optionally stretches negatives to the bottom row.
+WAVEFORM_AMP_POS = 96.0
+WAVEFORM_AMP_NEG = 184.0  # −0.446 * 184 ≈ 82px below zero → y≈194
+WAVEFORM_STROKE = 10
+RICKER_TROUGH = -2.0 * math.exp(-1.5)  # exact min, t=±√3
+
+
+def ricker_series(n: int = RICKER_SAMPLES, t_max: float = RICKER_T_MAX):
+    """(t, ψ(t)) samples. numpy when present, identical math otherwise."""
+    try:
+        import numpy as np
+
+        t = np.linspace(-t_max, t_max, n)
+        psi = (1.0 - t * t) * np.exp(-0.5 * t * t)
+        return list(zip(t.tolist(), psi.tolist()))
+    except ImportError:
+        return [
+            (
+                -t_max + 2 * t_max * i / (n - 1),
+                ricker(-t_max + 2 * t_max * i / (n - 1)),
+            )
+            for i in range(n)
+        ]
+
+
+def waveform_points(*, brim_boost: bool = True) -> list[tuple[float, float]]:
+    """Map a real Ricker onto the 224×224 nine-cell.
+
+    Linear t→x. Positive lobe uses AMP_POS. If brim_boost, negative lobes
+    use AMP_NEG so the hat brim cuts the bottom row; otherwise true 0.446
+    ratio (brim sits in the mid/bottom gutter and vanishes at favicon size).
+    """
+    span = WAVEFORM_X1 - WAVEFORM_X0
     pts = []
-    span = y_base - y_peak
-    for i in range(samples + 1):
-        t = i / samples
-        u = (t - 0.5) * 2
-        x = x0 + (x1 - x0) * t
-        main = math.exp(-((u / 0.26) ** 2))
-        ripples = 0.4 * (
-            math.exp(-(((u + 0.6) / 0.13) ** 2))
-            + math.exp(-(((u - 0.6) / 0.13) ** 2))
-        )
-        y = y_base - span * (main + ripples)
+    for t, psi in ricker_series():
+        x = WAVEFORM_X0 + span * (t + RICKER_T_MAX) / (2 * RICKER_T_MAX)
+        amp = WAVEFORM_AMP_POS if (psi >= 0 or not brim_boost) else WAVEFORM_AMP_NEG
+        y = WAVEFORM_Y_ZERO - amp * psi
         pts.append((x, y))
     return pts
 
 
-WAVEFORM_STROKE = 11
-
-
-def waveform_overlay(cutout: str) -> str:
+def waveform_overlay(
+    cutout: str, filled: bool = True, *, brim_boost: bool = True
+) -> str:
+    pts = waveform_points(brim_boost=brim_boost)
+    curve = polyline_path(pts)
+    if filled:
+        y0 = WAVEFORM_Y_ZERO
+        return (
+            f'<path d="{curve} L{pts[-1][0]:.2f} {y0:.2f} '
+            f'L{pts[0][0]:.2f} {y0:.2f} Z" fill="{cutout}"/>'
+        )
     return (
-        f'<path d="{catmull_rom_path(waveform_points())}" fill="none" stroke="{cutout}" '
-        f'stroke-width="{WAVEFORM_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>'
+        f'<path d="{curve}" fill="none" stroke="{cutout}" '
+        f'stroke-width="{WAVEFORM_STROKE}" stroke-linecap="round" '
+        f'stroke-linejoin="round"/>'
     )
+
+
+def waveform_stroke_overlay(cutout: str) -> str:
+    """Same Ricker, stroke instead of fill — unused alternate in dist/waveform-stroke."""
+    return waveform_overlay(cutout, filled=False)
 
 
 def equalizer_overlay(cutout: str) -> str:
@@ -140,19 +175,22 @@ def relay_overlay(cutout: str) -> str:
 
 ICONS = {
     "waveform": waveform_overlay,
+    "waveform-stroke": waveform_stroke_overlay,
     "equalizer": equalizer_overlay,
     "relay": relay_overlay,
 }
 
 ICON_LABELS = {
-    "waveform": "acoustic waveform",
+    "waveform": "filled Mexican-hat waveform",
+    "waveform-stroke": "stroked Mexican-hat waveform",
     "equalizer": "mixer faders",
     "relay": "signal relay",
 }
 
 
-def mark_svg(kind: str = "waveform") -> str:
-    overlay = ICONS[kind]("#000000")
+def mark_svg(kind: str = "waveform", overlay: str | None = None) -> str:
+    if overlay is None:
+        overlay = ICONS[kind]("#000000")
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
   <defs>
     {gradient_def()}
@@ -223,7 +261,7 @@ FAMILY_ICON_ONLY = {
 
 def main() -> None:
     wordmark = wordmark_paths()
-    for kind in ("waveform", "equalizer"):
+    for kind in ("waveform", "waveform-stroke", "equalizer"):
         out = DIST / kind
         out.mkdir(parents=True, exist_ok=True)
         for theme in ("light", "dark"):
@@ -237,6 +275,9 @@ def main() -> None:
     mark = mark_svg("waveform")
     (DIST / "mark.svg").write_text(mark, encoding="utf-8")
     (DIST / "waveform" / "mark.svg").write_text(mark, encoding="utf-8")
+    (DIST / "waveform-stroke" / "mark.svg").write_text(
+        mark_svg("waveform-stroke"), encoding="utf-8"
+    )
 
     for slug, kind in FAMILY_ICON_ONLY.items():
         out = DIST / slug
