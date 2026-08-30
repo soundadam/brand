@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+  <defs>
+    <linearGradient id="soundadam-blue" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#006fe8"/>
+      <stop offset="1" stop-color="#1386ff"/>
+    </linearGradient>
+    <mask id="mark-cutout" maskUnits="userSpaceOnUse" x="0" y="0" width="224" height="224">
+      <g fill="#ffffff">
+        <rect x="2" y="2" width="68" height="68" rx="6"/>
+        <rect x="78" y="2" width="68" height="68" rx="6"/>
+        <rect x="154" y="2" width="68" height="68" rx="6"/>
+        <rect x="2" y="78" width="68" height="68" rx="6"/>
+        <rect x="78" y="78" width="68" height="68" rx="6"/>
+        <rect x="154" y="78" width="68" height="68" rx="6"/>
+        <rect x="2" y="154" width="68" height="68" rx="6"/>
+        <rect x="78" y="154" width="68" height="68" rx="6"/>
+        <rect x="154" y="154" width="68" height="68" rx="6"/>
+      </g>
+      <path d="M2 142 C20 141 29 126 44 124 C59 122 66 141 78 142 C92 143 93 82 111 69 C129 56 134 140 150 140 C164 140 170 124 184 124 C198 124 205 141 222 143" fill="none" stroke="#000000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="224" height="224" fill="url(#soundadam-blue)" mask="url(#mark-cutout)"/>
+</svg>
