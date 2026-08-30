@@ -76,27 +76,33 @@ def catmull_rom_path(points: list[tuple[float, float]]) -> str:
 
 
 def waveform_points() -> list[tuple[float, float]]:
-    """Bipolar oscilloscope trace: 2.5 cycles, equal peaks, full grid height.
+    """Unipolar pulse with side ripples, sitting on a baseline.
 
-    A unipolar bump with decaying side lobes reads as single-slit diffraction.
-    Three equal-amplitude swings about the mid line read as audio; 2.5
-    cycles puts a full-height peak in the centre column.
+    A bipolar hairline disappears into the nine-cell gutters. A single
+    raised bump with two smaller ripples still reads at favicon size;
+    the centre lobe reaches the top row so the cut fills the grid height.
     """
     x0, x1 = 8.0, 216.0
-    y_mid = 112.0
-    amp = 104.0
-    cycles = 2.5
+    y_base = 168.0
+    y_peak = 16.0
     samples = 40
     pts = []
+    span = y_base - y_peak
     for i in range(samples + 1):
         t = i / samples
+        u = (t - 0.5) * 2
         x = x0 + (x1 - x0) * t
-        y = y_mid - amp * math.sin(2 * math.pi * cycles * t)
+        main = math.exp(-((u / 0.26) ** 2))
+        ripples = 0.4 * (
+            math.exp(-(((u + 0.6) / 0.13) ** 2))
+            + math.exp(-(((u - 0.6) / 0.13) ** 2))
+        )
+        y = y_base - span * (main + ripples)
         pts.append((x, y))
     return pts
 
 
-WAVEFORM_STROKE = 7
+WAVEFORM_STROKE = 11
 
 
 def waveform_overlay(cutout: str) -> str:
