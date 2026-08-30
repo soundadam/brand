@@ -88,9 +88,8 @@ lockup.
 
 `dist/*.svg` are the checked-in deliverable. `src/build_vector_logos.py`
 recomposes them from `src/wordmark-trace.svg` (letterforms) plus the
-nine-cell geometry. The waveform glyph itself is a set of control points
-(`WAVEFORM_POINTS`) run through a Catmull-Rom spline (`catmull_rom_path`) —
-tune the points, not the path string, to reshape it.
+nine-cell geometry. The waveform glyph is the original centred cubic
+(`WAVEFORM_PATH`), not an off-centre spike.
 
 ```sh
 python3 src/build_vector_logos.py
