@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Compose soundadam-family lockups and marks from the traced wordmark.
+"""Compose the soundadam mark, compact hat, and lockup from the traced wordmark.
 
-The nine-cell grid + blue gradient is the shared "chassis" for every
-sound-* product. Each product gets its own glyph cut into the grid via
-ICONS; only soundadam has a traced wordmark today, so other family
-members currently render as icon-only marks (see FAMILY below).
+The filled Mexican-hat / Ricker wavelet is the identity. The nine-cell
+grid with a hat cutout is the large mark. The hat silhouette alone is
+the compact mark used at small sizes and next to the wordmark.
 """
 
 import math
@@ -14,12 +13,15 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SRC = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
+ARCHIVE = DIST / "archive"
 TRACE = SRC / "wordmark-trace.svg"
 
 CANVAS_W = 1324
 CANVAS_H = 280
 GRID_MARGIN = 48
 WORDMARK_GAP = 64
+WORDMARK_FILL_LIGHT = "#050505"
+WORDMARK_FILL_ON_BLUE = "#ffffff"
 
 GRADIENT_STOPS = [
     (0, "#006fe8"),
@@ -81,12 +83,9 @@ RICKER_T_MAX = 4.0
 RICKER_SAMPLES = 241
 WAVEFORM_X0, WAVEFORM_X1 = 8.0, 216.0
 WAVEFORM_Y_ZERO = 112.0
-# Peak into the top row. True-ratio troughs only reach ~y=157 (gutter),
-# so the grid overlay optionally stretches negatives to the bottom row.
 WAVEFORM_AMP_POS = 96.0
 WAVEFORM_AMP_NEG = 184.0  # −0.446 * 184 ≈ 82px below zero → y≈194
 WAVEFORM_STROKE = 10
-RICKER_TROUGH = -2.0 * math.exp(-1.5)  # exact min, t=±√3
 
 
 def ricker_series(n: int = RICKER_SAMPLES, t_max: float = RICKER_T_MAX):
@@ -124,73 +123,28 @@ def waveform_points(*, brim_boost: bool = True) -> list[tuple[float, float]]:
     return pts
 
 
-def waveform_overlay(
-    cutout: str, filled: bool = True, *, brim_boost: bool = True
-) -> str:
-    pts = waveform_points(brim_boost=brim_boost)
+def hat_fill_d() -> str:
+    pts = waveform_points(brim_boost=True)
     curve = polyline_path(pts)
+    y0 = WAVEFORM_Y_ZERO
+    return f"{curve} L{pts[-1][0]:.2f} {y0:.2f} L{pts[0][0]:.2f} {y0:.2f} Z"
+
+
+def hat_stroke_d() -> str:
+    return polyline_path(waveform_points(brim_boost=True))
+
+
+def waveform_overlay(cutout: str, filled: bool = True) -> str:
     if filled:
-        y0 = WAVEFORM_Y_ZERO
-        return (
-            f'<path d="{curve} L{pts[-1][0]:.2f} {y0:.2f} '
-            f'L{pts[0][0]:.2f} {y0:.2f} Z" fill="{cutout}"/>'
-        )
+        return f'<path d="{hat_fill_d()}" fill="{cutout}"/>'
     return (
-        f'<path d="{curve}" fill="none" stroke="{cutout}" '
+        f'<path d="{hat_stroke_d()}" fill="none" stroke="{cutout}" '
         f'stroke-width="{WAVEFORM_STROKE}" stroke-linecap="round" '
         f'stroke-linejoin="round"/>'
     )
 
 
-def waveform_stroke_overlay(cutout: str) -> str:
-    """Same Ricker, stroke instead of fill — unused alternate in dist/waveform-stroke."""
-    return waveform_overlay(cutout, filled=False)
-
-
-def equalizer_overlay(cutout: str) -> str:
-    return "\n        ".join(
-        [
-            f'<path d="M61 58 V164" fill="none" stroke="{cutout}" stroke-width="10" stroke-linecap="round"/>',
-            f'<path d="M110 49 V182" fill="none" stroke="{cutout}" stroke-width="10" stroke-linecap="round"/>',
-            f'<path d="M162 59 V166" fill="none" stroke="{cutout}" stroke-width="10" stroke-linecap="round"/>',
-            f'<rect x="10" y="96" width="11" height="34" rx="5.5" fill="{cutout}"/>',
-            f'<rect x="207" y="96" width="11" height="34" rx="5.5" fill="{cutout}"/>',
-        ]
-    )
-
-
-def relay_overlay(cutout: str) -> str:
-    """Arrow – node – arrow: a signal passing through a relay station."""
-    return "\n        ".join(
-        [
-            f'<path d="M30 112 H194" fill="none" stroke="{cutout}" stroke-width="9" stroke-linecap="round"/>',
-            f'<path d="M54 88 L30 112 L54 136" fill="none" stroke="{cutout}" stroke-width="9" '
-            'stroke-linecap="round" stroke-linejoin="round"/>',
-            f'<path d="M170 88 L194 112 L170 136" fill="none" stroke="{cutout}" stroke-width="9" '
-            'stroke-linecap="round" stroke-linejoin="round"/>',
-            f'<circle cx="112" cy="112" r="19" fill="{cutout}"/>',
-        ]
-    )
-
-
-ICONS = {
-    "waveform": waveform_overlay,
-    "waveform-stroke": waveform_stroke_overlay,
-    "equalizer": equalizer_overlay,
-    "relay": relay_overlay,
-}
-
-ICON_LABELS = {
-    "waveform": "filled Mexican-hat waveform",
-    "waveform-stroke": "stroked Mexican-hat waveform",
-    "equalizer": "mixer faders",
-    "relay": "signal relay",
-}
-
-
-def mark_svg(kind: str = "waveform", overlay: str | None = None) -> str:
-    if overlay is None:
-        overlay = ICONS[kind]("#000000")
+def grid_cutout_mark(overlay: str) -> str:
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
   <defs>
     {gradient_def()}
@@ -206,106 +160,97 @@ def mark_svg(kind: str = "waveform", overlay: str | None = None) -> str:
 '''
 
 
-def compact_mark_svg() -> str:
-    """Filled Mexican-hat as the glyph itself — no nine-cell grid.
+def mark_svg() -> str:
+    """Nine-cell grid with filled-hat cutout. Light backgrounds only."""
+    return grid_cutout_mark(waveform_overlay("#000000", filled=True))
 
-    At favicon size the 8px gutters collapse to subpixels and the grid
-    reads as noise. The hat silhouette is the identity that still holds.
-    """
-    pts = waveform_points(brim_boost=True)
-    curve = polyline_path(pts)
-    y0 = WAVEFORM_Y_ZERO
-    path = (
-        f"{curve} L{pts[-1][0]:.2f} {y0:.2f} "
-        f"L{pts[0][0]:.2f} {y0:.2f} Z"
-    )
+
+def compact_mark_svg() -> str:
+    """Filled Mexican-hat as the glyph itself — no nine-cell grid."""
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
   <defs>
     {gradient_def()}
   </defs>
-  <path d="{path}" fill="url(#soundadam-blue)"/>
+  <path d="{hat_fill_d()}" fill="url(#soundadam-blue)"/>
 </svg>
 '''
 
 
-def svg_document(kind: str, theme: str, wordmark: str, transparent: bool = False) -> str:
-    if theme == "light":
-        background = "#ffffff"
-        foreground = "#050505"
-    elif theme == "dark":
-        background = "#07111c"
-        foreground = "#f7f9fb"
-    else:
-        raise ValueError(theme)
-
-    label = ICON_LABELS[kind]
-    overlay = ICONS[kind]
-    background_rect = "" if transparent else f'<rect width="{CANVAS_W}" height="{CANVAS_H}" fill="{background}"/>'
-    if transparent:
-        symbol_markup = f'''<mask id="symbol-cutout" maskUnits="userSpaceOnUse" x="{GRID_MARGIN}" y="28" width="224" height="224">
-      <g transform="translate({GRID_MARGIN} 28)" fill="#ffffff">
-        {icon_cells()}
-        <g>{overlay("#000000")}</g>
-      </g>
-    </mask>
-    <rect x="{GRID_MARGIN}" y="28" width="224" height="224" fill="url(#soundadam-blue)" mask="url(#symbol-cutout)"/>'''
-    else:
-        symbol_markup = f'''<g transform="translate({GRID_MARGIN} 28)">
-    <g fill="url(#soundadam-blue)">
-        {icon_cells()}
-    </g>
-    {overlay(background)}
-  </g>'''
-    wordmark_x = GRID_MARGIN + 224 + WORDMARK_GAP
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_W}" height="{CANVAS_H}" viewBox="0 0 {CANVAS_W} {CANVAS_H}" role="img" aria-labelledby="title desc">
-  <title id="title">soundadam O&amp;M + acoustics logo</title>
-  <desc id="desc">soundadam wordmark with a blue nine-cell {label} symbol on a {theme} background.</desc>
+def compact_on_blue_svg() -> str:
+    """Blue field, white hat — inverse compact for dark or brand-color UI."""
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
   <defs>
     {gradient_def()}
   </defs>
-  {background_rect}
-  {symbol_markup}
-  <g transform="translate({wordmark_x} 28)" fill="{foreground}" fill-rule="evenodd">
+  <rect width="224" height="224" fill="url(#soundadam-blue)"/>
+  <path d="{hat_fill_d()}" fill="#ffffff"/>
+</svg>
+'''
+
+
+def lockup_svg(wordmark: str, *, on_blue: bool) -> str:
+    """Compact hat + traced wordmark. Never the nine-cell next to type."""
+    hat_fill = "#ffffff" if on_blue else "url(#soundadam-blue)"
+    wordmark_fill = WORDMARK_FILL_ON_BLUE if on_blue else WORDMARK_FILL_LIGHT
+    background = (
+        f'<rect width="{CANVAS_W}" height="{CANVAS_H}" fill="url(#soundadam-blue)"/>'
+        if on_blue
+        else ""
+    )
+    theme = "blue" if on_blue else "light"
+    wordmark_x = GRID_MARGIN + 224 + WORDMARK_GAP
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_W}" height="{CANVAS_H}" viewBox="0 0 {CANVAS_W} {CANVAS_H}" role="img" aria-labelledby="title desc">
+  <title id="title">soundadam O&amp;M + acoustics logo</title>
+  <desc id="desc">soundadam wordmark with a compact Mexican-hat mark on a {theme} background.</desc>
+  <defs>
+    {gradient_def()}
+  </defs>
+  {background}
+  <g transform="translate({GRID_MARGIN} 28)">
+    <path d="{hat_fill_d()}" fill="{hat_fill}"/>
+  </g>
+  <g transform="translate({wordmark_x} 28)" fill="{wordmark_fill}" fill-rule="evenodd">
       {wordmark}
   </g>
 </svg>
 '''
 
 
-# Family members that only need the shared grid + a glyph today (no traced
-# wordmark yet). Add an entry here and a matching ICONS function to spin up
-# a new sound-* product mark; give it a wordmark trace later to promote it
-# to a full lockup like soundadam's.
-FAMILY_ICON_ONLY = {
-    "soundapi": "relay",
-}
+def archive_stroke_svg() -> str:
+    """Nine-cell grid with stroked-hat cutout. Light backgrounds only."""
+    return grid_cutout_mark(waveform_overlay("#000000", filled=False))
+
+
+def archive_stroke_on_blue_svg() -> str:
+    """Blue field, white Ricker stroke — inverse of the unused line mark."""
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+  <defs>
+    {gradient_def()}
+  </defs>
+  <rect width="224" height="224" fill="url(#soundadam-blue)"/>
+  <path d="{hat_stroke_d()}" fill="none" stroke="#ffffff" stroke-width="{WAVEFORM_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+'''
 
 
 def main() -> None:
     wordmark = wordmark_paths()
-    for kind in ("waveform", "waveform-stroke", "equalizer"):
-        out = DIST / kind
-        out.mkdir(parents=True, exist_ok=True)
-        for theme in ("light", "dark"):
-            (out / f"on-{theme}.svg").write_text(
-                svg_document(kind, theme, wordmark), encoding="utf-8"
-            )
-            (out / f"transparent-on-{theme}.svg").write_text(
-                svg_document(kind, theme, wordmark, transparent=True),
-                encoding="utf-8",
-            )
-    mark = mark_svg("waveform")
-    (DIST / "mark.svg").write_text(mark, encoding="utf-8")
-    (DIST / "waveform" / "mark.svg").write_text(mark, encoding="utf-8")
-    (DIST / "mark-compact.svg").write_text(compact_mark_svg(), encoding="utf-8")
-    (DIST / "waveform-stroke" / "mark.svg").write_text(
-        mark_svg("waveform-stroke"), encoding="utf-8"
-    )
+    DIST.mkdir(parents=True, exist_ok=True)
+    ARCHIVE.mkdir(parents=True, exist_ok=True)
 
-    for slug, kind in FAMILY_ICON_ONLY.items():
-        out = DIST / slug
-        out.mkdir(parents=True, exist_ok=True)
-        (out / "mark.svg").write_text(mark_svg(kind), encoding="utf-8")
+    compact = compact_mark_svg()
+    (DIST / "mark.svg").write_text(mark_svg(), encoding="utf-8")
+    (DIST / "compact.svg").write_text(compact, encoding="utf-8")
+    (DIST / "mark-compact.svg").write_text(compact, encoding="utf-8")
+    (DIST / "compact-on-blue.svg").write_text(compact_on_blue_svg(), encoding="utf-8")
+    (DIST / "lockup.svg").write_text(lockup_svg(wordmark, on_blue=False), encoding="utf-8")
+    (DIST / "lockup-on-blue.svg").write_text(
+        lockup_svg(wordmark, on_blue=True), encoding="utf-8"
+    )
+    (ARCHIVE / "stroke.svg").write_text(archive_stroke_svg(), encoding="utf-8")
+    (ARCHIVE / "stroke-on-blue.svg").write_text(
+        archive_stroke_on_blue_svg(), encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":
