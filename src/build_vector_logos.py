@@ -240,6 +240,7 @@ def main() -> None:
     (DIST / "mark.svg").write_text(mark_svg(), encoding="utf-8")
     (DIST / "compact.svg").write_text(compact, encoding="utf-8")
     (DIST / "mark-compact.svg").write_text(compact, encoding="utf-8")
+    (DIST / "favicon.svg").write_text(compact, encoding="utf-8")
     (DIST / "compact-on-blue.svg").write_text(compact_on_blue_svg(), encoding="utf-8")
     (DIST / "lockup.svg").write_text(lockup_svg(wordmark), encoding="utf-8")
     (ARCHIVE / "stroke.svg").write_text(archive_stroke_svg(), encoding="utf-8")
