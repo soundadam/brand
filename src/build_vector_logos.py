@@ -21,7 +21,6 @@ CANVAS_H = 280
 GRID_MARGIN = 48
 WORDMARK_GAP = 64
 WORDMARK_FILL_LIGHT = "#050505"
-WORDMARK_FILL_ON_BLUE = "#ffffff"
 
 GRADIENT_STOPS = [
     (0, "#006fe8"),
@@ -161,7 +160,12 @@ def grid_cutout_mark(overlay: str) -> str:
 
 
 def mark_svg() -> str:
-    """Nine-cell grid with filled-hat cutout. Light backgrounds only."""
+    """Nine-cell grid with filled-hat cutout. Hole stays transparent.
+
+    Use as a standalone glyph (browser chrome, large display). The cutout
+    maps whatever sits behind the SVG — do not composite onto white.
+    Never pair with the wordmark.
+    """
     return grid_cutout_mark(waveform_overlay("#000000", filled=True))
 
 
@@ -177,7 +181,7 @@ def compact_mark_svg() -> str:
 
 
 def compact_on_blue_svg() -> str:
-    """Blue field, white hat — inverse compact for dark or brand-color UI."""
+    """Blue tile, white hat. Standalone icon only — never next to type."""
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
   <defs>
     {gradient_def()}
@@ -188,28 +192,22 @@ def compact_on_blue_svg() -> str:
 '''
 
 
-def lockup_svg(wordmark: str, *, on_blue: bool) -> str:
-    """Compact hat + traced wordmark. Never the nine-cell next to type."""
-    hat_fill = "#ffffff" if on_blue else "url(#soundadam-blue)"
-    wordmark_fill = WORDMARK_FILL_ON_BLUE if on_blue else WORDMARK_FILL_LIGHT
-    background = (
-        f'<rect width="{CANVAS_W}" height="{CANVAS_H}" fill="url(#soundadam-blue)"/>'
-        if on_blue
-        else ""
-    )
-    theme = "blue" if on_blue else "light"
+def lockup_svg(wordmark: str) -> str:
+    """Compact hat + traced wordmark on a transparent canvas.
+
+    Never the nine-cell next to type. Never compact-on-blue next to type.
+    """
     wordmark_x = GRID_MARGIN + 224 + WORDMARK_GAP
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_W}" height="{CANVAS_H}" viewBox="0 0 {CANVAS_W} {CANVAS_H}" role="img" aria-labelledby="title desc">
   <title id="title">soundadam O&amp;M + acoustics logo</title>
-  <desc id="desc">soundadam wordmark with a compact Mexican-hat mark on a {theme} background.</desc>
+  <desc id="desc">soundadam wordmark with a compact Mexican-hat mark.</desc>
   <defs>
     {gradient_def()}
   </defs>
-  {background}
   <g transform="translate({GRID_MARGIN} 28)">
-    <path d="{hat_fill_d()}" fill="{hat_fill}"/>
+    <path d="{hat_fill_d()}" fill="url(#soundadam-blue)"/>
   </g>
-  <g transform="translate({wordmark_x} 28)" fill="{wordmark_fill}" fill-rule="evenodd">
+  <g transform="translate({wordmark_x} 28)" fill="{WORDMARK_FILL_LIGHT}" fill-rule="evenodd">
       {wordmark}
   </g>
 </svg>
@@ -243,10 +241,7 @@ def main() -> None:
     (DIST / "compact.svg").write_text(compact, encoding="utf-8")
     (DIST / "mark-compact.svg").write_text(compact, encoding="utf-8")
     (DIST / "compact-on-blue.svg").write_text(compact_on_blue_svg(), encoding="utf-8")
-    (DIST / "lockup.svg").write_text(lockup_svg(wordmark, on_blue=False), encoding="utf-8")
-    (DIST / "lockup-on-blue.svg").write_text(
-        lockup_svg(wordmark, on_blue=True), encoding="utf-8"
-    )
+    (DIST / "lockup.svg").write_text(lockup_svg(wordmark), encoding="utf-8")
     (ARCHIVE / "stroke.svg").write_text(archive_stroke_svg(), encoding="utf-8")
     (ARCHIVE / "stroke-on-blue.svg").write_text(
         archive_stroke_on_blue_svg(), encoding="utf-8"
